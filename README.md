@@ -5,7 +5,7 @@ The app allows to:
   * get wallets
   * make deposits
   * make transfers
-  * get filtered wallet's transactions history both in .csv or in json formats
+  * get filtered wallet's transactions history both in .csv or json formats
   
 Sample .env configuration:
 ```
