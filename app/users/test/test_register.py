@@ -1,6 +1,5 @@
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
-from django.urls import reverse
 from faker import Faker
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
@@ -14,7 +13,7 @@ class UserRegistrationTestCase(APITestCase):
         cls.user_object = UserFactory.build()
         cls.users_saved = UserFactory.create_batch(3)
         cls.client = APIClient()
-        cls.registration_url = reverse("register")
+        cls.registration_url = "/api/register/"
         cls.faker_obj = Faker()
 
     def test_if_data_is_valid_then_register(self):
