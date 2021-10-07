@@ -67,7 +67,7 @@ class MakeTransferTestCase(APITestCase):
         )
         response_body = {
             "transaction_status": "success",
-            "new_balance": new_sender_balance,
+            "new_balance": str(new_sender_balance),
         }
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)

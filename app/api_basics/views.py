@@ -1,3 +1,5 @@
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -6,7 +8,17 @@ from rest_framework.response import Response
 from rest_framework.settings import api_settings
 from rest_framework_csv import renderers as r
 
-from .errors_exceptions import InsufficientFunds
+from .documentation_stuff import (
+    GET_HISTORY_CSV_RESPONSE,
+    GET_HISTORY_JSON_RESPONSE,
+    INSUFFICIENT_FUNDS_RESPONSE,
+    MAKE_DEPOSIT_REQUEST,
+    MAKE_TRANSFER_REQUEST,
+    RECIPIENT_DOESNT_EXIST_RESPONSE,
+    RECIPIENT_IS_SENDER_RESPONSE,
+    TRANSACTION_NEGATIVE_ZERO_AMOUNT_RESPONSE,
+    TRANSACTION_RESPONSE,
+)
 from .filters import HistoryFilter
 from .models import TransactionV2, Wallet
 from .serializers import (
@@ -67,6 +79,15 @@ class WalletViewSet(
         """To set current user as wallet's holder on it's creation"""
         serializer.save(holder=self.request.user)
 
+    @extend_schema(
+        request=DepositSerializer,
+        responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT},
+        examples=[
+            MAKE_DEPOSIT_REQUEST,
+            TRANSACTION_RESPONSE,
+            TRANSACTION_NEGATIVE_ZERO_AMOUNT_RESPONSE,
+        ],
+    )
     @action(detail=True, methods=["post"], permission_classes=[UserWalletPermission])
     def make_deposit(self, request, name=None):
         """Implements 'make_deposit' action on 'wallet' resource.
@@ -78,12 +99,24 @@ class WalletViewSet(
             return Response(
                 {
                     "transaction_status": "success",
-                    "new_balance": Wallet.objects.filter(name=name)[0].balance,
+                    "new_balance": str(Wallet.objects.filter(name=name)[0].balance),
                 }
             )
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(
+        request=MakeTransferSerializer,
+        responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT},
+        examples=[
+            MAKE_TRANSFER_REQUEST,
+            TRANSACTION_RESPONSE,
+            TRANSACTION_NEGATIVE_ZERO_AMOUNT_RESPONSE,
+            INSUFFICIENT_FUNDS_RESPONSE,
+            RECIPIENT_IS_SENDER_RESPONSE,
+            RECIPIENT_DOESNT_EXIST_RESPONSE,
+        ],
+    )
     @action(detail=True, methods=["post"], permission_classes=[UserWalletPermission])
     def make_transfer(self, request, name=None):
         """Implements 'make_transfer' action on 'wallet' resource.
@@ -94,24 +127,33 @@ class WalletViewSet(
             amount = serializer.validated_data.get("amount")
             recipient_name = serializer.validated_data.get("recipient")
             recipient_id = Wallet.objects.filter(name=recipient_name)[0].id
-            if wallet.balance < amount:
-                raise InsufficientFunds
             wallet.make_transaction(amount=amount, recipient_id=recipient_id)
             return Response(
                 {
                     "transaction_status": "success",
-                    "new_balance": Wallet.objects.filter(name=name)[0].balance,
+                    "new_balance": str(Wallet.objects.filter(name=name)[0].balance),
                 }
             )
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(
+        parameters=[GetHistoryParamsSerializer],
+        request=GetHistoryParamsSerializer,
+        responses={200: OpenApiTypes.OBJECT},
+        examples=[GET_HISTORY_CSV_RESPONSE, GET_HISTORY_JSON_RESPONSE],
+    )
     @action(detail=True, methods=["get"], permission_classes=[UserWalletPermission])
     def history(self, request, name=None):
         """Implements 'history' action on 'wallet' resource to return all paginated transactions that satisfy applied
         filter.
             - If 'HTTP_ACCEPT' header is 'application/json', returns JSON response
-            - If 'HTTP_ACCEPT' header is '*/*' or 'text/csv', returns CSV response"""
+            - If 'HTTP_ACCEPT' header is '*/*' or 'text/csv', returns CSV response
+
+        Had to re-implement ordering for this action here and in GetHistoryParamsSerializer because this action
+        requires Wallets model queryset from GenericViewSet.get_queryset(), and filters.OrderingFilter also uses
+        this queryset, that's why it isn't possible to set ordering_fields from TransactionV2 model"""
+
         self.pagination_class = TransactionsPagination
         serializer = GetHistoryParamsSerializer(data=request.query_params)
         self.renderer_classes = [JSONRenderer]
@@ -119,8 +161,8 @@ class WalletViewSet(
             wallet_id = self.get_object().id
             initial_queryset = TransactionV2.objects.filter(wallet=wallet_id)
             transactions = HistoryFilter(
-                data=request.query_params, queryset=initial_queryset
-            ).qs.order_by("-timestamp")
+                data=serializer.validated_data, queryset=initial_queryset
+            ).qs.order_by(serializer.validated_data.get("ordering", "-timestamp"))
             if request.META.get("HTTP_ACCEPT") == "application/json":
                 return self.get_paginated_response(
                     TransactionV2Serializer(

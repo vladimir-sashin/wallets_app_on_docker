@@ -1,8 +1,9 @@
 from django.contrib.auth.models import User
 from django.db import models, transaction
 from django.db.models import F
+from rest_framework import serializers
 
-from .errors_exceptions import InsufficientFunds
+from .errors_exceptions import INSUFFICIENT_FUNDS_ERROR
 
 
 class Wallet(models.Model):
@@ -68,8 +69,8 @@ class Wallet(models.Model):
                     recipient=recipient_obj,
                     amount=amount,
                     transaction_type="DEB",
-                    balance_before=sender_obj.balance + amount,
-                    balance_after=sender_obj.balance,
+                    balance_before=sender_obj.balance,
+                    balance_after=sender_obj.balance - amount,
                 ).save()
                 # transaction record for credit
                 TransactionV2(
@@ -78,11 +79,13 @@ class Wallet(models.Model):
                     recipient=recipient_obj,
                     amount=amount,
                     transaction_type="CRED",
-                    balance_before=recipient_obj.balance - amount,
-                    balance_after=recipient_obj.balance,
+                    balance_before=recipient_obj.balance,
+                    balance_after=recipient_obj.balance + amount,
                 ).save()
             else:
-                raise InsufficientFunds
+                raise serializers.ValidationError(
+                    {"amount": [INSUFFICIENT_FUNDS_ERROR]}
+                )
 
 
 class TransactionV2(models.Model):

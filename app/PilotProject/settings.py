@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "api_basics",
     "rest_framework.authtoken",
     "users",
+    "drf_spectacular",
 ]
 
 MIDDLEWARE = [
@@ -66,6 +67,8 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "EXCEPTION_HANDLER": "api_basics.errors_exceptions.custom_exception_handler",
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "URL_FORMAT_OVERRIDE": None,
 }
 
 ROOT_URLCONF = "PilotProject.urls"
@@ -173,4 +176,10 @@ SIMPLE_JWT = {
     "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
     "SLIDING_TOKEN_LIFETIME": timedelta(minutes=5),
     "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Wallets Project API",
+    "DESCRIPTION": "REST API Wallets app",
+    "VERSION": "1.0.0",
 }
