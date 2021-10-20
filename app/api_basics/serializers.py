@@ -10,7 +10,7 @@ from .errors_exceptions import (
     RECIPIENT_IS_SENDER_ERROR,
     TRANSACTION_AMOUNT_ZERO_NEGATIVE_ERROR,
 )
-from .models import TransactionV2, Wallet
+from .models import TransactionReport, TransactionV2, Wallet
 
 
 @extend_schema_serializer(examples=[CREATE_WALLET_REQUEST_EXAMPLE])
@@ -20,6 +20,12 @@ class WalletSerializer(serializers.ModelSerializer):
     class Meta:
         model = Wallet
         fields = ["name", "balance"]
+
+
+class ReportsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TransactionReport
+        fields = "__all__"
 
 
 class DepositSerializer(serializers.Serializer):
