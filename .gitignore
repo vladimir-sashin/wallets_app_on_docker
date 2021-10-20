@@ -71,6 +71,7 @@ __pypackages__/
 # Environments
 .env
 .env.db
+.env.celery.rabbit
 .venv
 env/
 venv/
