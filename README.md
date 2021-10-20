@@ -49,9 +49,19 @@ POSTGRES_PASSWORD=postgres_password
 POSTGRES_DB=postgres_db
 ```
 
+Sample .env.celery.rabbit configuration:
+```
+RABBITMQ_DEFAULT_USER=myuser
+RABBITMQ_DEFAULT_PASS=mypassword
+CELERY_BROKER_URL=amqp://myuser:mypassword@rabbitmq3:5672
+CELERY_RESULT_BACKEND=django-db
+WALLETS_TRANSACTIONS_REPORT_GENERATION_MINUTES=*/10
+```
+
 To run the application:
 1. Clone the repo
-2. Run ```docker-compose build```
-3. Run ```docker-compose up```
-4. Enjoy the app on http://localhost:1337/
-5. Swagger API documentation is available on http://localhost:1337/api/schema/swagger-ui/
+2. Create .env config files listed above   
+3. Run ```docker-compose build```
+4. Run ```docker-compose up```
+5. Enjoy the app on http://localhost:1337/
+6. Swagger API documentation is available on http://localhost:1337/api/schema/swagger-ui/
