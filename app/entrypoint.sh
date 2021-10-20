@@ -12,8 +12,9 @@ then
 fi
 
 echo yes | python manage.py collectstatic
-# python manage.py flush --no-input
-# python manage.py makemigrations
+python manage.py flush --no-input
+python manage.py makemigrations
 python manage.py migrate
+python manage.py migrate django_celery_results
 
 exec "$@"

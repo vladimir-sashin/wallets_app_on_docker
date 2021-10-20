@@ -14,7 +14,15 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+import sentry_sdk
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+from celery.schedules import crontab
+from sentry_sdk.integrations.django import DjangoIntegration
+
+# import api_basics.tasks
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -32,6 +40,9 @@ DEBUG = int(os.environ.get("DEBUG", default=0))
 
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(" ")
 
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL")
+
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND")
 
 # Application definition
 
@@ -47,6 +58,8 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "users",
     "drf_spectacular",
+    "django_celery_results",
+    "django_celery_beat",
 ]
 
 MIDDLEWARE = [
@@ -103,6 +116,9 @@ DATABASES = {
         "PASSWORD": os.environ.get("SQL_PASSWORD", "password"),
         "HOST": os.environ.get("SQL_HOST", "localhost"),
         "PORT": os.environ.get("SQL_PORT", "5432"),
+        "DISABLE_SERVER_SIDE_CURSORS": os.environ.get(
+            "DISABLE_SERVER_SIDE_CURSORS", True
+        ),
     }
 }
 
@@ -183,3 +199,20 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "REST API Wallets app",
     "VERSION": "1.0.0",
 }
+
+CELERY_BEAT_SCHEDULE = {
+    "report": {
+        "task": "api_basics.tasks.generate_report",
+        "schedule": crontab(
+            minute=os.environ.get("WALLETS_TRANSACTIONS_REPORT_GENERATION_MINUTES")
+        ),
+    }
+}
+
+
+sentry_sdk.init(
+    dsn=os.environ.get("SENTRY_DSN"),
+    integrations=[DjangoIntegration()],
+    traces_sample_rate=1.0,
+    send_default_pii=True,
+)

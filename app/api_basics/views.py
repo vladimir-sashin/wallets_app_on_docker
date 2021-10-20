@@ -2,7 +2,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.settings import api_settings
@@ -20,15 +20,23 @@ from .documentation_stuff import (
     TRANSACTION_RESPONSE,
 )
 from .filters import HistoryFilter
-from .models import TransactionV2, Wallet
+from .models import TransactionReport, TransactionV2, Wallet
 from .serializers import (
     DepositSerializer,
     GetHistoryParamsSerializer,
     MakeTransferSerializer,
+    ReportsSerializer,
     TransactionV2Serializer,
     WalletSerializer,
 )
 from .utils import TransactionsPagination, UserWalletPermission, WalletsPagination
+
+
+class ReportsViewSet(viewsets.GenericViewSet, mixins.ListModelMixin):
+    permission_classes = [IsAdminUser]
+    queryset = TransactionReport.objects.all()
+    pagination_class = WalletsPagination
+    serializer_class = ReportsSerializer
 
 
 class WalletViewSet(

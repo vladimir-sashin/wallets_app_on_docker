@@ -1,6 +1,9 @@
+from decimal import Decimal
+
 from django.contrib.auth.models import User
 from django.db import models, transaction
-from django.db.models import F
+from django.db.models import F, Q, Sum
+from django.utils import timezone
 from rest_framework import serializers
 
 from .errors_exceptions import INSUFFICIENT_FUNDS_ERROR
@@ -126,3 +129,33 @@ class TransactionV2(models.Model):
             models.Index(fields=["timestamp"]),
             models.Index(fields=["transaction_type", "timestamp"]),
         ]
+        ordering = ["-timestamp"]
+
+
+class TransactionReport(models.Model):
+    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    debit_sum = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    credit_sum = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+
+    @classmethod
+    def calculate_report(cls):
+        reports = (
+            TransactionV2.objects.filter(timestamp__date=timezone.now().date())
+            .values("wallet")
+            .order_by("wallet")
+            .annotate(
+                credit_sum=Sum(
+                    "amount", filter=Q(transaction_type=TransactionV2.CREDIT)
+                ),
+                debit_sum=Sum("amount", filter=Q(transaction_type=TransactionV2.DEBIT)),
+            )
+            .values("credit_sum", "debit_sum", "wallet")
+        )
+        for report in reports:
+            report["wallet"] = Wallet.objects.filter(id=report["wallet"])[0]
+            if not report["debit_sum"]:
+                report["debit_sum"] = Decimal(str(0))
+            if not report["credit_sum"]:
+                report["credit_sum"] = Decimal(str(0))
+        cls.objects.bulk_create([cls(**report) for report in reports])
